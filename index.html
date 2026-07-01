@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="주식 한입">
+<meta name="theme-color" content="#fffaf2">
+<title>오늘의 주식 한입 (LIVE)</title>
+<style>
+  :root{
+    --bg:#fffaf2; --card:#ffffff; --ink:#26211b; --sub:#7a7066;
+    --line:#efe6d8; --up:#e8453c; --down:#2f6fed;
+    --accent:#ff8a3d; --accent2:#ffd9b3; --pill:#fff1e3;
+    --shadow:0 4px 18px rgba(120,90,40,.08);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",system-ui,sans-serif;
+    line-height:1.6; padding:env(safe-area-inset-top) 0 calc(40px + env(safe-area-inset-bottom));
+  }
+  .wrap{max-width:480px; margin:0 auto; padding:0 16px;}
+  h1,h2,h3{margin:0; font-weight:800; letter-spacing:-.02em;}
+  p{margin:.4em 0;}
+  .muted{color:var(--sub); font-size:13px;}
+  .up{color:var(--up); font-weight:700;}
+  .down{color:var(--down); font-weight:700;}
+
+  /* Header */
+  header{padding:22px 0 8px; text-align:center;}
+  .logo{font-size:26px; font-weight:900; letter-spacing:-.03em;}
+  .logo .bite{color:var(--accent);}
+  .date{font-size:13px; color:var(--sub); margin-top:2px;}
+  .mood{
+    margin:14px 0 4px; background:linear-gradient(135deg,#fff2e2,#ffe6cf);
+    border:1px solid var(--accent2); border-radius:18px; padding:14px 16px;
+    font-size:15px; font-weight:700; box-shadow:var(--shadow);
+  }
+
+  /* Indicator cards */
+  .grid4{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:12px 0 6px;}
+  .kcard{
+    background:var(--card); border:1px solid var(--line); border-radius:16px;
+    padding:12px 14px; box-shadow:var(--shadow);
+  }
+  .kcard .name{font-size:12px; color:var(--sub);}
+  .kcard .val{font-size:18px; font-weight:800; margin-top:2px;}
+  .kcard .chg{font-size:13px; margin-top:1px;}
+
+  /* Section */
+  section{margin:26px 0;}
+  .sec-title{display:flex; align-items:center; gap:8px; font-size:19px; margin-bottom:4px;}
+  .sec-sub{font-size:13px; color:var(--sub); margin-bottom:12px;}
+
+  /* Flow cards */
+  .flow{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; margin-bottom:12px; box-shadow:var(--shadow);}
+  .flow-row{display:flex; align-items:stretch; gap:8px;}
+  .flow-step{flex:1; background:var(--pill); border-radius:12px; padding:10px; text-align:center; font-size:13px; font-weight:700;}
+  .flow-step .emoji{font-size:22px; display:block; margin-bottom:3px;}
+  .flow-arrow{display:flex; align-items:center; color:var(--accent); font-weight:900; font-size:18px;}
+  .flow-why{margin-top:10px; font-size:13px; color:var(--sub); background:#faf6ef; border-radius:10px; padding:8px 10px;}
+  .flow-why b{color:var(--ink);}
+
+  /* Tabs (psychology) */
+  .tabs{display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; -webkit-overflow-scrolling:touch;}
+  .tab{flex:0 0 auto; padding:8px 12px; border-radius:999px; background:var(--card); border:1px solid var(--line); font-size:13px; font-weight:700; color:var(--sub); cursor:pointer;}
+  .tab.active{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .panel{display:none; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin-top:10px; box-shadow:var(--shadow);}
+  .panel.active{display:block; animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0; transform:translateY(4px);}to{opacity:1; transform:none;}}
+  .panel .lead{font-weight:800; font-size:16px; margin-bottom:4px;}
+  .gauge{height:10px; border-radius:999px; background:#eee; overflow:hidden; margin:10px 0;}
+  .gauge > div{height:100%; border-radius:999px;}
+
+  /* Sector cards */
+  .sectors{display:grid; gap:10px;}
+  .sector{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; box-shadow:var(--shadow);}
+  .sector h3{font-size:16px; display:flex; align-items:center; gap:6px;}
+  .tagline{font-size:13px; color:var(--sub); margin:4px 0;}
+  .warn{font-size:12px; color:#b06a00; background:#fff6e6; border-radius:8px; padding:6px 8px; margin-top:6px;}
+
+  /* News accordion */
+  .news{background:var(--card); border:1px solid var(--line); border-radius:16px; overflow:hidden; box-shadow:var(--shadow);}
+  .nitem{border-bottom:1px solid var(--line);}
+  .nitem:last-child{border-bottom:none;}
+  .nhead{display:flex; align-items:center; gap:10px; padding:14px; cursor:pointer;}
+  .nnum{flex:0 0 26px; height:26px; border-radius:8px; background:var(--pill); color:var(--accent); font-weight:900; display:flex; align-items:center; justify-content:center; font-size:14px;}
+  .ntitle{flex:1; font-size:14px; font-weight:700;}
+  .ntag{font-size:11px; padding:2px 7px; border-radius:999px; font-weight:700;}
+  .t-red{background:#ffe7e5; color:var(--up);}
+  .t-yellow{background:#fff3d6; color:#b08400;}
+  .chev{flex:0 0 16px; color:var(--sub); transition:transform .2s;}
+  .nitem.open .chev{transform:rotate(180deg);}
+  .nbody{display:none; padding:0 14px 14px 50px; font-size:13px; color:#54493d;}
+  .nitem.open .nbody{display:block;}
+  .nbody .mean{margin-top:8px; background:#f4f9f4; border-radius:10px; padding:8px 10px; font-size:13px;}
+  .nbody .mean b{color:#2e7d32;}
+
+  /* Education */
+  .lesson{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin-bottom:12px; box-shadow:var(--shadow);}
+  .lesson h3{font-size:16px; margin-bottom:6px;}
+  .lesson .analogy{background:#eef4ff; border-radius:10px; padding:10px; font-size:13px; margin:8px 0;}
+  .lesson .pt{font-weight:800; color:var(--accent); font-size:13px; margin-top:6px;}
+
+  /* Dictionary */
+  details.dict{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:6px 14px; box-shadow:var(--shadow);}
+  details.dict summary{font-weight:800; padding:10px 0; cursor:pointer; list-style:none; font-size:15px;}
+  details.dict summary::-webkit-details-marker{display:none;}
+  .dterm{padding:8px 0; border-top:1px solid var(--line); font-size:13px;}
+  .dterm b{color:var(--accent);}
+
+  footer{margin-top:24px; font-size:11px; color:#a89c8c; text-align:center; line-height:1.5;}
+  .krw{color:var(--accent); font-weight:700;}
+
+  /* LIVE controls */
+  .live-bar{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:6px 14px; margin:14px 0; box-shadow:var(--shadow);}
+  details.live-bar summary{font-weight:800; font-size:14px; padding:10px 0; cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between;}
+  details.live-bar summary::-webkit-details-marker{display:none;}
+  details.live-bar summary .hint{font-size:11px; color:var(--sub); font-weight:600;}
+  details.live-bar[open] summary{border-bottom:1px solid var(--line); margin-bottom:8px;}
+  details.live-bar .body{padding-bottom:10px;}
+  .clearbtn{background:none; border:none; color:var(--up); font-weight:700; font-size:11px; cursor:pointer; padding:0; margin-top:6px;}
+  .live-bar .key-row{display:flex; gap:8px; margin-top:8px;}
+  .live-bar input{flex:1; min-width:0; padding:10px 12px; border:1px solid var(--line); border-radius:12px; font-size:13px; background:#fff;}
+  .live-bar .small{font-size:11px; color:var(--sub); margin-top:8px; line-height:1.5;}
+  .live-bar a{color:var(--accent); font-weight:700;}
+  .reload{display:block; width:100%; margin:18px 0 4px; padding:14px; border:none; border-radius:14px; background:var(--ink); color:#fff; font-weight:800; font-size:15px; cursor:pointer;}
+  .reload:disabled{opacity:.5;}
+  .status{text-align:center; font-size:13px; margin:8px 0 0; min-height:18px;}
+  .status.err{color:var(--up);}
+  .status.ok{color:#2e7d32;}
+  .savebtn{padding:10px 14px; border:none; border-radius:12px; background:var(--accent); color:#fff; font-weight:800; font-size:13px; cursor:pointer; white-space:nowrap;}
+  .live-badge{display:inline-block; font-size:10px; font-weight:900; color:#fff; background:var(--accent); border-radius:999px; padding:2px 8px; vertical-align:middle; margin-left:6px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo">오늘의 주식 <span class="bite">한입</span> 🥪<span class="live-badge">LIVE</span></div>
+    <div class="date" id="todayDate">불러오는 중…</div>
+    <div class="mood" id="moodBox">😊 아래 <b>최신 뉴스로 새로고침</b> 버튼을 눌러 오늘의 시장을 불러와요.</div>
+  </header>
+
+  <!-- LIVE CONTROL -->
+  <details class="live-bar" id="liveBar">
+    <summary><span>⚙️ 최신 데이터 설정</span><span class="hint" id="keyHint">눌러서 열기</span></summary>
+    <div class="body">
+      <div class="muted" style="font-size:12px;">Gemini API 키를 한 번만 넣어두면, 버튼 누를 때마다 구글 검색으로 최신 시장을 정리해줘요.</div>
+      <div class="key-row">
+        <input id="apiKey" type="password" placeholder="Gemini API 키 붙여넣기 (AIza... 39자)" autocomplete="off">
+        <button class="savebtn" id="saveKey">저장</button>
+      </div>
+      <div class="small">
+        🔑 키 발급: <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">aistudio.google.com/app/apikey</a> (무료) ·
+        키는 이 기기 브라우저에만 저장돼요(localStorage). 키 앞뒤 빈칸이 섞이지 않게 통째로 붙여넣으세요.
+      </div>
+      <button class="clearbtn" id="clearKey">🗑️ 저장된 키 지우기</button>
+    </div>
+  </details>
+
+  <button class="reload" id="refreshBtn">🔄 최신 뉴스로 새로고침</button>
+  <div class="status" id="status"></div>
+
+  <!-- KEY INDICATORS -->
+  <div class="grid4" id="indicators"></div>
+  <p class="muted" style="text-align:center;">※ 국내 지수는 검색 기반 추정이에요. 정확한 숫자는 증권사 앱에서 확인하세요.</p>
+
+  <!-- SECTION 1: WORLD -> KOREA -> SECTOR -->
+  <section>
+    <div class="sec-title">🌍 세계 → 🇰🇷 한국 → 🏭 우리 산업</div>
+    <div class="sec-sub">세계에서 생긴 일이 우리나라 어떤 회사에 영향을 주는지 차근차근 따라가 봐요.</div>
+
+    <div class="flow" style="background:#fff7ee;">
+      <p style="margin:0; font-size:13px; color:#54493d;" id="worldIntro">새로고침을 누르면 오늘 세계·한국·우리 산업의 상황이 요약돼요.</p>
+    </div>
+
+    <div id="flowList"></div>
+
+    <div class="flow" style="background:#eef4ff;" id="flowSummaryBox">
+      <p style="margin:0; font-size:13px;"><b>🧭 오늘의 핵심 정리</b><br>
+        <span id="flowSummary">새로고침을 누르면 오늘의 핵심이 정리돼요.</span></p>
+    </div>
+  </section>
+
+  <!-- SECTION 2: PSYCHOLOGY 5 VIEWS -->
+  <section>
+    <div class="sec-title">📊 한국 시장과 사람들의 마음</div>
+    <div class="sec-sub">시장을 움직이는 건 결국 '사람들의 심리'예요. 5가지 눈으로 살펴봐요.</div>
+    <div class="tabs" id="tabs">
+      <div class="tab active" data-p="p0">🔄 시장 변화</div>
+      <div class="tab" data-p="p1">😨 투자 심리</div>
+      <div class="tab" data-p="p2">🏢 기업 투자</div>
+      <div class="tab" data-p="p3">🙋 개인 투자</div>
+      <div class="tab" data-p="p4">🌐 외국인 투자</div>
+    </div>
+    <div id="panels"></div>
+  </section>
+
+  <!-- SECTION 4: TOP 10 NEWS -->
+  <section>
+    <div class="sec-title">📰 오늘 꼭 알아야 할 뉴스 10</div>
+    <div class="sec-sub">제목을 누르면 쉬운 설명이 펼쳐져요. 🔴는 특히 중요, 🟡는 참고예요.</div>
+    <div class="news" id="news"></div>
+  </section>
+
+  <!-- SECTION 5: EDUCATION (dynamic) -->
+  <section>
+    <div class="sec-title">🎓 오늘의 주식 교실</div>
+    <div class="sec-sub">오늘 시장·뉴스와 연결된 개념을 중학생도 알기 쉽게 배워봐요.</div>
+    <div id="lessons"></div>
+  </section>
+
+  <!-- DICTIONARY (evergreen) -->
+  <details class="dict">
+    <summary>📖 오늘의 용어 사전 (눌러서 열기)</summary>
+    <div class="dterm"><b>환율</b> — 우리 돈과 외국 돈을 바꾸는 비율. '원·달러 1,563원'은 1달러를 사려면 1,563원이 든다는 뜻.</div>
+    <div class="dterm"><b>금리</b> — 돈을 빌리거나 맡길 때 붙는 이자. 높으면 주식보다 예금이 매력적.</div>
+    <div class="dterm"><b>나스닥</b> — 미국의 기술주(애플·엔비디아 등)가 많이 모인 시장.</div>
+    <div class="dterm"><b>자사주 매입</b> — 회사가 자기 회사 주식을 직접 사는 것. 보통 좋은 신호.</div>
+    <div class="dterm"><b>환차손</b> — 환율 때문에 돈을 바꿀 때 생기는 손해. 외국인이 가장 신경 씀.</div>
+    <div class="dterm"><b>공포·탐욕 지수</b> — 시장 사람들이 겁먹었는지 들떴는지를 숫자로 나타낸 것.</div>
+    <div class="dterm"><b>WTI</b> — 미국의 대표적인 원유(기름) 가격 기준.</div>
+  </details>
+
+  <footer>
+    ※ 이 앱은 <b>학습용</b>이며 특정 종목을 사라는 투자 권유가 아니에요.<br>
+    내용은 Gemini AI가 구글 검색으로 모은 최신 정보 기반이라 실제와 차이가 있을 수 있어요.<br>
+    실제 매매 전에는 반드시 증권사 앱에서 정확한 정보를 확인하세요. 🙏
+  </footer>
+
+</div>
+
+<script>
+/* =========================================================
+   기본(예시) 데이터 — 새로고침 전이나 오류 시 보여주는 내용
+   ========================================================= */
+var DATA = {
+  date: "버튼을 눌러 오늘 날짜를 불러오세요",
+  mood: { emoji:"😊", label:"대기 중", desc:"위의 '최신 뉴스로 새로고침' 버튼을 눌러 오늘의 시장을 불러오세요." },
+  fearGreed: 50,
+  indicators: [
+    { name:"코스피", val:"—", chg:"새로고침을 눌러주세요", dir:"" },
+    { name:"코스닥", val:"—", chg:"새로고침을 눌러주세요", dir:"" },
+    { name:"원·달러 환율", val:"—", chg:"새로고침을 눌러주세요", dir:"" },
+    { name:"미국 S&P500", val:"—", chg:"새로고침을 눌러주세요", dir:"" }
+  ],
+  worldIntro: "새로고침을 누르면 오늘 세계·한국·우리 산업의 상황이 요약돼요.",
+  flows: [
+    { emojis:["🌍","🇰🇷","🏭"], steps:["세계 소식","한국으로 전달","우리 산업"], why:"새로고침을 누르면 오늘의 흐름이 채워져요." }
+  ],
+  flowSummary: "새로고침을 누르면 오늘의 핵심이 정리돼요.",
+  psychology: [
+    { lead:"🔄 시장은 어떻게 움직였나요?", paras:["새로고침을 눌러주세요."], note:"" },
+    { lead:"😨 사람들은 지금 겁먹었을까요?", paras:["새로고침을 눌러주세요."], note:"왼쪽=극도의 공포 😱 / 오른쪽=극도의 탐욕 🤑", gauge:true },
+    { lead:"🏢 회사들은 무엇을 하고 있나요?", paras:["새로고침을 눌러주세요."], note:"" },
+    { lead:"🙋 개인 투자자(개미)는요?", paras:["새로고침을 눌러주세요."], note:"" },
+    { lead:"🌐 외국인은 어떻게 움직이나요? (제일 중요!)", paras:["새로고침을 눌러주세요."], note:"" }
+  ],
+  news: [
+    { tag:"yellow", title:"아직 불러오지 않았어요", body:"위의 새로고침 버튼을 누르면 오늘의 뉴스 10개가 채워져요.", mean:"Gemini API 키가 필요해요." }
+  ],
+  lessons: [
+    { title:"새로고침을 누르면 오늘의 개념을 배워요", paras:["오늘 시장에서 가장 중요한 개념 3가지를 골라 쉽게 설명해 드릴게요."], analogy:"", point:"" }
+  ]
+};
+
+/* =========================================================
+   렌더링 함수들
+   ========================================================= */
+function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+function render(){
+  // 날짜
+  document.getElementById("todayDate").textContent = DATA.date || "";
+
+  // 분위기
+  var m = DATA.mood || {};
+  document.getElementById("moodBox").innerHTML =
+    esc(m.emoji||"") + " 오늘 시장 분위기: " + esc(m.label||"") +
+    '<br><span class="muted" style="font-weight:500;">' + esc(m.desc||"") + "</span>";
+
+  // 지표 4개
+  document.getElementById("indicators").innerHTML = (DATA.indicators||[]).map(function(k){
+    var cls = k.dir==="up" ? "up" : (k.dir==="down" ? "down" : "muted");
+    return '<div class="kcard"><div class="name">'+esc(k.name)+'</div>'+
+           '<div class="val">'+esc(k.val)+'</div>'+
+           '<div class="chg '+cls+'">'+esc(k.chg)+'</div></div>';
+  }).join("");
+
+  // 세계→한국→산업 도입 요약
+  document.getElementById("worldIntro").textContent = DATA.worldIntro || "";
+
+  // 흐름 카드
+  var DEFAULT_EMOJI = ["🌐","🇰🇷","🏭","📊"];
+  document.getElementById("flowList").innerHTML = (DATA.flows||[]).map(function(f){
+    var st = f.steps || [];
+    var em = f.emojis || [];
+    // AI가 이모지를 한 칸에 몰아넣거나 개수가 안 맞으면 기본 이모지로 대체
+    if(em.length !== st.length) em = [];
+    var cells = [];
+    for(var i=0;i<st.length;i++){
+      var icon = em[i] || DEFAULT_EMOJI[i] || "•";
+      cells.push('<div class="flow-step"><span class="emoji">'+esc(icon)+'</span>'+esc(st[i])+'</div>');
+      if(i < st.length-1) cells.push('<div class="flow-arrow">→</div>');
+    }
+    return '<div class="flow"><div class="flow-row">'+cells.join("")+'</div>'+
+           '<div class="flow-why"><b>왜요?</b> '+esc(f.why)+'</div></div>';
+  }).join("");
+
+  // 핵심 정리
+  document.getElementById("flowSummary").textContent = DATA.flowSummary || "";
+
+  // 심리 패널
+  document.getElementById("panels").innerHTML = (DATA.psychology||[]).map(function(p, i){
+    var paras = (p.paras||[]).map(function(t){ return "<p>"+esc(t)+"</p>"; }).join("");
+    var gauge = "";
+    if(p.gauge){
+      var w = Math.max(0, Math.min(100, DATA.fearGreed!=null?DATA.fearGreed:50));
+      gauge = '<div class="gauge"><div style="width:'+w+'%; background:linear-gradient(90deg,#e8453c,#ff8a3d);"></div></div>';
+    }
+    var note = p.note ? '<p class="muted">'+esc(p.note)+'</p>' : "";
+    return '<div class="panel'+(i===0?' active':'')+'" id="p'+i+'">'+
+           '<div class="lead">'+esc(p.lead)+'</div>'+paras+gauge+note+'</div>';
+  }).join("");
+
+  // 뉴스
+  var nbox = document.getElementById("news");
+  nbox.innerHTML = "";
+  (DATA.news||[]).forEach(function(n,i){
+    var tagClass = n.tag==='red'?'t-red':'t-yellow';
+    var tagText = n.tag==='red'?'🔴 중요':'🟡 참고';
+    var item = document.createElement('div');
+    item.className='nitem';
+    item.innerHTML =
+      '<div class="nhead">'+
+        '<div class="nnum">'+(i+1)+'</div>'+
+        '<div class="ntitle">'+esc(n.title)+'</div>'+
+        '<span class="ntag '+tagClass+'">'+tagText+'</span>'+
+        '<span class="chev">▾</span>'+
+      '</div>'+
+      '<div class="nbody">'+esc(n.body)+
+        '<div class="mean"><b>💡 내 투자에 주는 의미:</b> '+esc(n.mean)+'</div>'+
+      '</div>';
+    item.querySelector('.nhead').addEventListener('click', function(){ item.classList.toggle('open'); });
+    nbox.appendChild(item);
+  });
+
+  // 주식 교실 (동적)
+  var circled = ["①","②","③","④","⑤"];
+  document.getElementById("lessons").innerHTML = (DATA.lessons||[]).map(function(l, i){
+    var paras = (l.paras||[]).map(function(t){ return "<p>"+esc(t)+"</p>"; }).join("");
+    var analogy = l.analogy ? '<div class="analogy">'+esc(l.analogy)+'</div>' : "";
+    var point = l.point ? '<div class="pt">👉 한 줄 정리: '+esc(l.point)+'</div>' : "";
+    return '<div class="lesson"><h3>'+(circled[i]||(i+1))+' '+esc(l.title)+'</h3>'+
+           paras+analogy+point+'</div>';
+  }).join("");
+}
+
+/* 탭 전환 */
+function showTab(pid, el){
+  var tabs = document.querySelectorAll('.tab');
+  var panels = document.querySelectorAll('.panel');
+  for(var i=0;i<tabs.length;i++){ tabs[i].classList.remove('active'); }
+  for(var j=0;j<panels.length;j++){ panels[j].classList.remove('active'); }
+  if(el){ el.classList.add('active'); }
+  var p = document.getElementById(pid);
+  if(p){ p.classList.add('active'); }
+}
+document.getElementById('tabs').addEventListener('click', function(e){
+  var t = e.target.closest ? e.target.closest('.tab') : null;
+  if(t && t.dataset.p){ showTab(t.dataset.p, t); }
+});
+
+/* =========================================================
+   Gemini 호출 (구글 검색 grounding)
+   ========================================================= */
+var MODEL = "gemini-2.5-flash"; // 필요하면 gemini-2.5-pro 등으로 변경 가능
+
+function todayKorean(){
+  var d = new Date();
+  var days = ['일','월','화','수','목','금','토'];
+  return d.getFullYear()+"년 "+(d.getMonth()+1)+"월 "+d.getDate()+"일 "+days[d.getDay()]+"요일";
+}
+
+function buildPrompt(){
+  var today = todayKorean();
+  return [
+"당신은 한국 주식 초보자(중학생도 이해 가능)를 위한 '오늘의 주식 한입' 브리핑 작가입니다.",
+"구글 검색으로 오늘("+today+") 기준 가장 최신의 한국·미국 시장 상황을 조사하세요.",
+"조사할 것: 코스피/코스닥 흐름, 원·달러 환율, 미국 S&P500·나스닥·다우, 미국 10년물 금리, 국제유가(WTI), 비트코인, 그리고 오늘의 주요 시장 뉴스.",
+"",
+"그런 다음 아래 JSON '스키마'에 정확히 맞춰 한국어로만 작성하세요. 말투는 친절하고 쉬운 비유체(예: '옆 반이 시험 망치면 우리 반도 가라앉는 거예요').",
+"규칙:",
+"- 반드시 순수 JSON 한 개만 출력. 코드블록(```)이나 설명 문장 금지.",
+"- indicators는 정확히 4개: 코스피, 코스닥, 원·달러 환율, 미국 S&P500. dir은 'up'(빨강·상승/높음) 또는 'down'(파랑·하락) 또는 ''.",
+"- worldIntro: '세계→한국→우리 산업' 섹션 도입 요약. 오늘 세계에서 무슨 일이 있었고 그게 한국·우리 산업에 어떻게 연결되는지 2~3문장으로 쉽고 친근하게(비유 가능). 매번 오늘 상황에 맞게 새로 쓸 것(고정 문구 금지).",
+"- flows는 3~4개. 각 flow의 steps는 짧은 단어 3개, emojis는 steps와 '같은 개수(3개)' 배열로 각 단계에 어울리는 이모지 1개씩. 절대 한 칸에 이모지를 여러 개 넣지 말 것. why는 2~3문장 쉬운 설명.",
+"- psychology는 정확히 5개, 순서 고정: [시장 변화, 투자 심리(겁/공포), 기업 행동, 개인 투자자, 외국인]. 각 항목 lead/paras(1~2문장씩)/note.",
+"- fearGreed는 0(극도의 공포)~100(극도의 탐욕) 정수.",
+"- news는 정확히 10개. tag는 'red'(매우 중요) 또는 'yellow'(참고). title은 한 줄 제목, body는 쉬운 설명 1~2문장, mean은 '내 투자에 주는 의미' 1문장.",
+"- lessons는 정확히 3개. 위에서 다룬 오늘의 뉴스·흐름·심리와 '직접 연관된' 개념을 골라 가르칠 것(고정 주제 금지, 매번 오늘 상황에 맞게). 각 lesson: title(질문형 제목), paras(쉬운 설명 1~2문장씩), analogy(이모지로 시작하는 일상 비유 한 문장), point(한 줄 핵심 정리).",
+"- 숫자는 검색으로 확인한 실제 최신 값에 최대한 가깝게. 모르면 '약', '추정' 표현 사용.",
+"",
+"스키마 예시:",
+JSON.stringify({
+  date: today,
+  mood: { emoji:"😟", label:"조심조심", desc:"한 문장 요약" },
+  fearGreed: 30,
+  worldIntro: "오늘 미국 기술주가 흔들리면서 한국 반도체도 긴장했지만, 유가 하락은 운송·화학에 한숨을 돌려줬어요. 같은 날도 업종마다 웃고 우는 게 달라요.",
+  indicators: [
+    { name:"코스피", val:"2,650 ▼", chg:"하락 압력", dir:"down" },
+    { name:"코스닥", val:"850 ▼", chg:"기술주 부진", dir:"down" },
+    { name:"원·달러 환율", val:"1,560원", chg:"높음(원화 약세)", dir:"up" },
+    { name:"미국 S&P500", val:"7,300", chg:"▼1.0%", dir:"down" }
+  ],
+  flows: [ { emojis:["💻","📉","🔌"], steps:["미국 기술주 급락","한국 반도체 출렁","반도체·IT"], why:"이유 설명" } ],
+  flowSummary: "오늘의 핵심 2~3문장",
+  psychology: [
+    { lead:"🔄 시장은 어떻게 움직였나요?", paras:["설명"], note:"쉬운 비유" },
+    { lead:"😨 사람들은 지금 겁먹었을까요?", paras:["설명"], note:"왼쪽=공포 / 오른쪽=탐욕" },
+    { lead:"🏢 회사들은 무엇을 하고 있나요?", paras:["설명"], note:"비유" },
+    { lead:"🙋 개인 투자자(개미)는요?", paras:["설명"], note:"조언" },
+    { lead:"🌐 외국인은 어떻게 움직이나요?", paras:["설명"], note:"비유" }
+  ],
+  news: [ { tag:"red", title:"제목", body:"쉬운 설명", mean:"내 투자에 주는 의미" } ],
+  lessons: [ { title:"환율이 오르면 왜 중요할까?", paras:["쉬운 설명 1~2문장"], analogy:"🍫 비유 한 문장", point:"한 줄 핵심" } ]
+}, null, 0)
+  ].join("\n");
+}
+
+function extractJSON(text){
+  var s = text.indexOf("{");
+  var e = text.lastIndexOf("}");
+  if(s<0 || e<0 || e<=s) throw new Error("AI 응답에서 JSON을 찾지 못했어요.");
+  return JSON.parse(text.slice(s, e+1));
+}
+
+function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+
+async function callGemini(apiKey, onRetry){
+  var url = "https://generativelanguage.googleapis.com/v1beta/models/"+MODEL+":generateContent?key="+encodeURIComponent(apiKey);
+  var body = {
+    contents: [{ role:"user", parts:[{ text: buildPrompt() }] }],
+    tools: [{ google_search: {} }],
+    generationConfig: { temperature: 0.7 }
+  };
+
+  var MAX_TRIES = 4;
+  for(var attempt = 1; attempt <= MAX_TRIES; attempt++){
+    var res = await fetch(url, {
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify(body)
+    });
+
+    if(res.ok){
+      var data = await res.json();
+      var cand = data.candidates && data.candidates[0];
+      if(!cand) throw new Error("AI가 빈 응답을 보냈어요. 잠시 후 다시 시도해 주세요.");
+      var parts = (cand.content && cand.content.parts) || [];
+      var text = parts.map(function(p){ return p.text||""; }).join("");
+      return extractJSON(text);
+    }
+
+    var t = await res.text();
+    // 503(과부하)·429(요청 한도)는 잠시 기다렸다 자동 재시도
+    if((res.status === 503 || res.status === 429) && attempt < MAX_TRIES){
+      var waitSec = attempt * 4; // 4초 → 8초 → 12초
+      if(onRetry) onRetry(attempt, waitSec, res.status);
+      await sleep(waitSec * 1000);
+      continue;
+    }
+    throw new Error("API 오류 "+res.status+" — "+t.slice(0,160));
+  }
+}
+
+/* 들어온 데이터를 안전하게 병합 */
+function applyData(d){
+  if(d.date) DATA.date = d.date;
+  if(d.mood) DATA.mood = d.mood;
+  if(typeof d.fearGreed === "number") DATA.fearGreed = d.fearGreed;
+  if(Array.isArray(d.indicators) && d.indicators.length) DATA.indicators = d.indicators;
+  if(d.worldIntro) DATA.worldIntro = d.worldIntro;
+  if(Array.isArray(d.flows) && d.flows.length) DATA.flows = d.flows;
+  if(d.flowSummary) DATA.flowSummary = d.flowSummary;
+  if(Array.isArray(d.psychology) && d.psychology.length){
+    // 두 번째 항목(투자 심리)에는 게이지 표시 유지
+    d.psychology.forEach(function(p,i){ if(i===1) p.gauge = true; });
+    DATA.psychology = d.psychology;
+  }
+  if(Array.isArray(d.news) && d.news.length) DATA.news = d.news;
+  if(Array.isArray(d.lessons) && d.lessons.length) DATA.lessons = d.lessons;
+}
+
+/* =========================================================
+   UI 이벤트
+   ========================================================= */
+var KEY_STORE = "gemini_api_key_stock_bite";
+var keyInput = document.getElementById("apiKey");
+var statusEl = document.getElementById("status");
+var refreshBtn = document.getElementById("refreshBtn");
+var liveBar = document.getElementById("liveBar");
+var keyHint = document.getElementById("keyHint");
+
+function hasKey(){ return !!keyInput.value.trim(); }
+
+// 키 유무에 따라 설정칸을 펼치거나 접고, 우측 힌트 문구를 바꿔요
+function syncKeyUI(){
+  if(hasKey()){
+    keyHint.textContent = "✅ 키 저장됨 · 눌러서 변경";
+    liveBar.open = false;
+  }else{
+    keyHint.textContent = "키 입력 필요";
+    liveBar.open = true;
+  }
+}
+
+(function initKey(){
+  try{ var k = localStorage.getItem(KEY_STORE); if(k) keyInput.value = k; }catch(e){}
+  syncKeyUI();
+})();
+
+document.getElementById("saveKey").addEventListener("click", function(){
+  var k = keyInput.value.trim();
+  keyInput.value = k; // 앞뒤 공백 제거 반영
+  try{ localStorage.setItem(KEY_STORE, k); }catch(e){}
+  syncKeyUI();
+  setStatus(k ? "🔑 키를 저장했어요. 이제 새로고침을 눌러보세요!" : "키가 비어 있어요.", k ? "ok" : "err");
+});
+
+document.getElementById("clearKey").addEventListener("click", function(){
+  keyInput.value = "";
+  try{ localStorage.removeItem(KEY_STORE); }catch(e){}
+  syncKeyUI();
+  setStatus("저장된 키를 지웠어요.", "ok");
+});
+
+function setStatus(msg, kind){
+  statusEl.textContent = msg || "";
+  statusEl.className = "status" + (kind ? " "+kind : "");
+}
+
+refreshBtn.addEventListener("click", async function(){
+  var key = keyInput.value.trim();
+  if(!key){ setStatus("먼저 Gemini API 키를 넣고 '저장'을 눌러주세요.", "err"); liveBar.open = true; return; }
+  try{ localStorage.setItem(KEY_STORE, key); }catch(e){}
+
+  refreshBtn.disabled = true;
+  var baseMsg = "최신 뉴스를 불러오는 중 ⏳ (10~30초 걸려요)";
+  var dots = 0, timer = setInterval(function(){
+    dots = (dots+1)%4;
+    setStatus(baseMsg + " " + "·".repeat(dots));
+  }, 500);
+
+  function onRetry(attempt, waitSec, status){
+    var why = status === 503 ? "서버가 잠시 붐벼요" : "요청이 잠깐 많아요";
+    baseMsg = "⏳ "+why+". "+waitSec+"초 후 자동으로 다시 시도할게요 ("+attempt+"/3)";
+  }
+
+  try{
+    var d = await callGemini(key, onRetry);
+    applyData(d);
+    render();
+    clearInterval(timer);
+    setStatus("✅ 방금 업데이트했어요! (" + (DATA.date||"") + ")", "ok");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }catch(err){
+    clearInterval(timer);
+    var msg = (err && err.message) ? err.message : "불러오기 실패";
+    if(/not valid|API_KEY_INVALID|400/.test(msg)){
+      setStatus("⚠️ API 키가 올바르지 않아요. 설정에서 키를 다시 확인해 주세요.", "err");
+      liveBar.open = true;
+    }else if(/503|UNAVAILABLE|high demand/.test(msg)){
+      setStatus("⚠️ Gemini 서버가 지금 많이 붐벼요. 1~2분 뒤 다시 눌러주세요. (구글 쪽 일시적 문제예요)", "err");
+    }else if(/429/.test(msg)){
+      setStatus("⚠️ 잠깐 요청이 많았어요(무료 한도). 1분쯤 뒤 다시 눌러주세요.", "err");
+    }else{
+      setStatus("⚠️ " + msg, "err");
+    }
+  }finally{
+    refreshBtn.disabled = false;
+  }
+});
+
+/* 첫 화면 렌더 */
+render();
+</script>
+</body>
+</html>
